@@ -1,0 +1,17 @@
+CHARACTERS:		200
+FACTIONS:		2
+k_L:			2
+K_SF:			4
+alpha:			0.9
+
+- With the increase of the rebel events led by Bettie against the govern of Oswald from the Mountaingleam faction, Oswald command his army to repress the rebel acts.
+- The people from the Mountaingleam faction, led by Bettie, revolt against their leader, Oswald from the Mountaingleam faction, due to his repressive govern.
+- The leaders Oswald from the Mountaingleam faction and Vernon from the Bearbreeze faction argued and reached a misunderstanding about a recently discovered territory.
+- A conflict occurs between the Mountaingleam and Bearbreeze factions!
+- Due to personal problems between Ralph from the Mountaingleam faction and Nanci from the Bearbreeze faction, Ralph decides to murder his rival in cold blood.
+- Vernon from the Bearbreeze faction finds out that his deceased friend, Nanci from the Bearbreeze faction, was killed by the hands of Ralph from the Mountaingleam faction.
+- Vernon from the Bearbreeze faction hires an assassin and elimnates Ralph from the Mountaingleam faction, responsible for the death of his friend, Nanci from the Bearbreeze faction.
+- The Mountaingleam faction declares war to the Bearbreeze faction.
+- To save his army, Oswald from the Mountaingleam faction decides to challenge the leader of his rival faction, Vernon from the Bearbreeze faction, to a duel.
+Vernon from the Bearbreeze faction emerges victorious from the duel and Oswald from the Mountaingleam faction is killed.
+- Deanne from the Bearbreeze faction murders Vernon from the Bearbreeze faction to avenge the death of his friend Oswald from the Mountaingleam faction, dead in a duel against Vernon from the Bearbreeze faction.

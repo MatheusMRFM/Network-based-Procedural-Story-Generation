@@ -1,0 +1,38 @@
+CHARACTERS:		100
+FACTIONS:		4
+k_L:			4
+K_SF:			1
+alpha:			0.4
+
+- A conflict occurs between the Stonesnow and Bloodmourn factions!
+- A conflict occurs between the Stonesnow and Greenorb factions!
+- The Bloodmourn faction declares war to the Stonesnow faction.
+- A conflict occurs between the Bloodmourn and Cliffcut factions!
+- A conflict occurs between the Bloodmourn and Greenorb factions!
+- The Cliffcut faction declares war to the Bloodmourn faction.
+- The Greenorb faction declares war to the Stonesnow faction.
+- A bloody war breaks out between the Stonesnow and Greenorb factions!
+- The Bloodmourn faction declares war to the Greenorb faction.
+- A bloody war breaks out between the Bloodmourn and Greenorb factions!
+- The leaders Scotty from the Greenorb faction and Clair from the Bloodmourn faction argued and reached a misunderstanding about a recently discovered territory.
+- A bloody war breaks out between the Stonesnow and Bloodmourn factions!
+- Amidst the chaos of the battle between the Stonesnow and Bloodmourn factions, Whitaker from the Stonesnow faction brutally defeated Waly from the Bloodmourn faction.
+- A bloody war breaks out between the Bloodmourn and Cliffcut factions!
+- The leaders Elias from the Cliffcut faction and Clair from the Bloodmourn faction argued and reached a misunderstanding about a recently discovered territory.
+- A conflict occurs between the Stonesnow and Cliffcut factions!
+- The Stonesnow faction declares war to the Cliffcut faction.
+- A bloody war breaks out between the Stonesnow and Cliffcut factions!
+- The Cliffcut faction destroys the Stonesnow faction and takes control of their territory.
+- The Stonesnow faction elects Cindi as the new leader of the recently dominated Cliffcut faction.
+- With the increase of the rebel events led by Edi against the govern of French from the Stonesnow faction, French command his army to repress the rebel acts.
+- The new leadership established in the Cliffcut faction results in a popular revolt, culminating in the murder of their new leader Cindi from the Stonesnow faction.
+- Whitaker from the Stonesnow faction finds out that Kati from the Cliffcut faction was responsible for the murder of his old friend and leader, Cindi from the Stonesnow faction.
+- After discovering that Kati from the Cliffcut faction killed his friend Cindi from the Stonesnow faction, Whitaker from the Stonesnow faction challenges the assassin to a duel.
+Whitaker from the Stonesnow faction emerges victorious from the duel and Kati from the Cliffcut faction is killed.
+- The people from the Stonesnow faction, led by Edi, revolt against their leader, French from the Stonesnow faction, due to his repressive govern.
+- A conflict occurs between the Stonesnow and Bloodmourn factions!
+- A conflict occurs between the Stonesnow and Greenorb factions!
+- The leaders Scotty from the Greenorb faction and French from the Stonesnow faction argued and reached a misunderstanding about a recently discovered territory.
+- With the increase of the rebel events led by Nigel against the govern of Clair from the Bloodmourn faction, Clair command his army to repress the rebel acts.
+- A conflict occurs between the Bloodmourn and Greenorb factions!
+- With the increase of the rebel events led by Edi against the govern of French from the Stonesnow faction, French command his army to repress the rebel acts.

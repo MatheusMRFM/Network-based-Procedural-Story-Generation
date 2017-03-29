@@ -1,0 +1,31 @@
+INTRODUCTION
+
+    There are 2 folders in this project:
+
+	- CODE:			Contains the code files of the proposed Procedura Story 
+					Generation method. 
+	
+	- EXAMPLES:		Contains files with examples of stories generated through
+					the proposed system by using different parameters.
+				
+COMPILATION GUIDELINES:
+    
+    - All projects uses a Makefile to compile. Therefore, to compile a 
+    given project, simply go to the correct folder using a terminal and
+    type 'make'. To clean the files generated through compilation, simply
+    type 'make clean'.
+    
+    The executable created os called ProceduralStory. To execute it, just run:
+    
+    ./ProceduralStory
+    
+    Remember to ajust the parameters of the system by opening the main.cpp file
+    and adjusting the indicated variables according to your needs.
+    
+EXECUTION GUIDELINES:
+
+    When a story is generated, it is also created a file containing the social
+    network created, following a graph description file. This file is saved
+    in the Code/Output folder. This file can then be used within some graph 
+    visualization tools, such as "Gephi".
+	
