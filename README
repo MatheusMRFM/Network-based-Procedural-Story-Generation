@@ -2,8 +2,8 @@ INTRODUCTION
 
     There are 2 folders in this project:
 
-	- CODE:			Contains the code files of the proposed Procedura Story 
-					Generation method. 
+	- CODE:			Contains the code files of the proposed Network-based
+					Procedural Story generation method. 
 	
 	- EXAMPLES:		Contains files with examples of stories generated through
 					the proposed system by using different parameters.
