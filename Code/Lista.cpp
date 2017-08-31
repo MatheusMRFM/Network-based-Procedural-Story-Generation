@@ -140,7 +140,7 @@ Item* ListaDE::remove (int indice) {
 }
 //----------------------------------------------------------------------
 void ListaDE::imprime () {
-	//printf("LISTA ORDENADA CRESCENTE: \n");
+	printf("LISTA ORDENADA CRESCENTE: \n");
 	for (Item* p = this->first; p != NULL; p = p->prox) {
 		printf("(%d, %.1f)\n", p->id, p->f);
 	}
@@ -246,9 +246,9 @@ Item_Evento* Lista_Evento::remove_topo () {
 }
 //----------------------------------------------------------------------
 void Lista_Evento::imprime () {
-	//printf("LISTA ORDENADA: \n");
+	printf("LISTA ORDENADA: \n");
 	for (Item_Evento* p = this->first; p != NULL; p = p->prox) {
-		printf("Event %d (%d, %d) - %.3f)\n", p->id, p->participante[0], p->participante[1], p->p);
+		printf("Evento %d (%d, %d) - %.3f)\n", p->id, p->participante[0], p->participante[1], p->p);
 	}
 }
 //----------------------------------------------------------------------

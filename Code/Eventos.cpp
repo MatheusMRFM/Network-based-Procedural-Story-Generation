@@ -5,14 +5,6 @@
 #define SEM_MUDANCA 	-1
 #define VARIAS_MUDANCAS	-2
 
-#define DELTA_CONFLITO 				25
-#define DELTA_GUERRA 				50
-#define DELTA_DISPUTA 				50
-#define DELTA_ASSASSINATO 			40
-#define DELTA_DESCOBRE_ASSASSINO 	10
-#define DELTA_REPRESSAO_POP		 	10
-#define DELTA_CONFLITO_CIVIL	 	20
-
 #define TEMPO_GUERRA_TOMA			2
 #define TEMPO_GUERRA_MORTE			1
 
@@ -36,6 +28,13 @@ Dado_Mudanca *mudanca;		///Vetor que indica para cada personagem i qual personag
 							///personagens de outra facção, caso muda_fac != -1, ou seja, i alterou sua amizade com todos os
 							///personagens da facção muda_fac
 							
+int eventos_pessoais;
+int descobre;
+int assassinatos;
+int duelos;
+							
+int ultimos_eventos[NUM_EVENTOS];
+							
 ///**************************** TODO ***********************************
 ///2) Fazer p1 assassinar p2 se p2 matou algum amigo de p1 em um duelo
 
@@ -47,6 +46,7 @@ void altera_dados_evento (Dados_Evento ***evento_ocorrido, int p1, int p2, int e
 		evento_ocorrido[p2][p1][e].ocorrencias++;
 		evento_ocorrido[p2][p1][e].ultima_ocr = timeline;
 	}
+	ultimos_eventos[e] = timeline;
 	timeline++;
 }
 //**********************************************************************
@@ -67,11 +67,17 @@ Rede_Eventos::Rede_Eventos (Relacao *per) {
 	evento[REPRESSAO_POP] 		= new Repressao_Pop();
 	evento[CONFLITO_CIVIL] 		= new Conflito_Civil();
 	///Variavel global inicializada aqui
+	eventos_pessoais = 0;
+	descobre = 0;
+	duelos = 0;
+	assassinatos = 0;
 	mudanca = (Dado_Mudanca*) malloc (sizeof(Dado_Mudanca) * per->num_vert);
 	for (int i = 0; i < personagens->num_vert; i++) {
 		mudanca[i].muda_per = SEM_MUDANCA;
 		mudanca[i].muda_fac = SEM_MUDANCA;
 	}
+	for (int i = 0; i < NUM_EVENTOS; i ++)
+		ultimos_eventos[i] = -2*DELTA_GERAL;
 	
 	evento_ocorrido = (Dados_Evento***) malloc (sizeof(Dados_Evento**)*personagens->num_vert);
 	for (int i = 0; i < personagens->num_vert; i++) {
@@ -113,6 +119,7 @@ void Rede_Eventos::busca_novos_eventos (int p1, int p2) {
 	float p;
 	
 	for (int e = 0; e < NUM_EVENTOS; e++) {
+		//if ((timeline - ultimos_eventos[e]) >= DELTA_GERAL && evento[e]->pre_condicoes(personagens, evento_ocorrido, p1, p2) == true) {
 		if (evento[e]->pre_condicoes(personagens, evento_ocorrido, p1, p2) == true) {
 			p = evento[e]->pobabilidade_ocorre(personagens, evento_ocorrido, p1, p2);
 			aux.id = e;
@@ -129,14 +136,21 @@ void Rede_Eventos::busca_novos_eventos (int p1, int p2) {
 }
 //----------------------------------------------------------------------
 void Rede_Eventos::escolhe_evento () {
+	//prox_eventos->imprime();
 	Item_Evento* ev = this->prox_eventos->remove_topo();
 	int p1 = ev->participante[0], p2 = ev->participante[1];
 	while (ev != NULL && !this->evento[ev->id]->pre_condicoes(personagens, evento_ocorrido, p1, p2)) {
 		free(ev);
+		//printf("\tRemove\n");
 		ev = this->prox_eventos->remove_topo();
+		if (ev != NULL) {
+			p1 = ev->participante[0]; 
+			p2 = ev->participante[1];
+		}
 	}
 	if (ev != NULL) {
-		printf("- ");
+		//printf("- ");
+		printf("\\item ");
 		this->evento[ev->id]->executa_evento(personagens, evento_ocorrido, p1, p2);
 		this->evento[ev->id]->consequencias(personagens, evento_ocorrido, p1, p2);
 	}
@@ -148,6 +162,10 @@ void Rede_Eventos::escolhe_evento () {
 bool Conflito_Fac::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
 	int fac1 = personagens->caracteristica[p1][IND_FACCAO];
 	int fac2 = personagens->caracteristica[p2][IND_FACCAO];
+	
+	///Verifica se os personagens se conhecem
+	if (personagens->amizades[p1][p2] == SEM_AMIZADE)
+		return false;
 	
 	///Verifica se o evento ocorreu recentemente
 	if (evento_ocorrido[p1][p2][CONFLITO_FAC].ocorrencias > 0) {
@@ -177,7 +195,7 @@ bool Conflito_Fac::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_o
 		return false;
 		
 	///Verifica se os envolvidos são inimigos
-	if (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA) {
+	if (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA || personagens->amizades[p1][p2] == SEM_AMIZADE) {
 		return false;
 	}
 		
@@ -185,7 +203,10 @@ bool Conflito_Fac::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_o
 }
 //----------------------------------------------------------------------
 float Conflito_Fac::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
-	float p = personagens->amizades[p1][p2] * personagens->amizades[p2][p1];
+	uniform_real_distribution<> rand1(0, PROB_CONFLITO_FACCAO);
+	float p = personagens->amizades[p1][p2] * personagens->amizades[p2][p1] * rand1(gen2);
+	if (p < 0)
+		p = -p;
 	return p;
 }
 //----------------------------------------------------------------------
@@ -210,7 +231,7 @@ void Conflito_Fac::consequencias (Relacao *personagens, Dados_Evento ***evento_o
 	///Diminui a amizade do resto da população (apenas para os pares que já são inimigos)
 	for (int i = personagens->faccoes[fac1].ini; i <= personagens->faccoes[fac1].fim; i++) {
 		for (int j = personagens->faccoes[fac2].ini; j <= personagens->faccoes[fac2].fim; j++) {
-			if ((i != p1 || j != p2) && personagens->amizades[i][j] < AMIZADE_NEUTRA) {
+			if ((i != p1 || j != p2) && personagens->amizades[i][j] < AMIZADE_NEUTRA && personagens->amizades[i][j] != SEM_AMIZADE) {
 				if (personagens->caracteristica[i][IND_SAUDE] != MORTO && personagens->caracteristica[j][IND_SAUDE] != MORTO) {
 					mudanca[i].muda_fac = fac2;
 					personagens->amizades[i][j] -= REDUZ_CONFLITO_FAC_POVO;
@@ -309,17 +330,20 @@ bool Declara_Guerra::pre_condicoes (Relacao *personagens, Dados_Evento ***evento
 		}
 	}
 		
-	///Verifica se os envolvidos são inimigos
-	if (this->extra[0] == DECLARA_INIMIZADE && personagens->amizades[p1][p2] >= AMIZADE_NEUTRA)
+	///Verifica se os envolvidos são amigos
+	if (this->extra[0] == DECLARA_INIMIZADE && (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA || personagens->amizades[p1][p2] == SEM_AMIZADE))
 		return false;
 		
 	return true;
 }
 //----------------------------------------------------------------------
 float Declara_Guerra::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
-	float p = 1.0;
+	uniform_real_distribution<> rand1(0, PROB_DECLARA_GUERRA);
+	float p = rand1(gen2);
 	if (this->extra[0] == DECLARA_INIMIZADE)
-		p = personagens->amizades[p1][p2] * personagens->amizades[p2][p1];
+		p = p * personagens->amizades[p1][p2] * personagens->amizades[p2][p1];
+		if (p < 0)
+			p = -p;
 		
 	return p;
 }
@@ -361,7 +385,7 @@ void Declara_Guerra::consequencias (Relacao *personagens, Dados_Evento ***evento
 	///Diminui a amizade do resto da população (apenas para os pares que já são inimigos)
 	for (int i = personagens->faccoes[fac1].ini; i <= personagens->faccoes[fac1].fim; i++) {
 		for (int j = personagens->faccoes[fac2].ini; j <= personagens->faccoes[fac2].fim; j++) {
-			if ((i != p1 || j != p2) && personagens->amizades[i][j] < AMIZADE_NEUTRA) {
+			if ((i != p1 || j != p2) && personagens->amizades[i][j] < AMIZADE_NEUTRA && personagens->amizades[i][j] != SEM_AMIZADE) {
 				if (personagens->caracteristica[i][IND_SAUDE] != MORTO && personagens->caracteristica[j][IND_SAUDE] != MORTO) {
 					mudanca[i].muda_fac = fac2;
 					personagens->amizades[i][j] -= REDUZ_DECLARA_GUERRA_POVO;
@@ -413,14 +437,17 @@ bool Guerra::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocorrid
 		return false;
 		
 	///Verifica se os envolvidos são inimigos
-	if (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA)
+	if (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA || personagens->amizades[p1][p2] == SEM_AMIZADE)
 		return false;
 		
 	return true;
 }
 //----------------------------------------------------------------------
 float Guerra::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
-	float p = personagens->amizades[p1][p2] * personagens->amizades[p2][p1];
+	uniform_real_distribution<> rand1(0, PROB_TOMA_TERRITORIO);
+	float p = rand1(gen2) * personagens->amizades[p1][p2] * personagens->amizades[p2][p1];
+	if (p < 0)
+		p = -p;
 	return p;
 }
 //----------------------------------------------------------------------
@@ -463,7 +490,7 @@ void Guerra::consequencias (Relacao *personagens, Dados_Evento ***evento_ocorrid
 	///Diminui a amizade do resto da população (apenas para os pares que já são inimigos)
 	for (int i = personagens->faccoes[fac1].ini; i <= personagens->faccoes[fac1].fim; i++) {
 		for (int j = personagens->faccoes[fac2].ini; j <= personagens->faccoes[fac2].fim; j++) {
-			if ((i != p1 || j != p2) && personagens->amizades[i][j] < AMIZADE_NEUTRA) {
+			if ((i != p1 || j != p2) && personagens->amizades[i][j] < AMIZADE_NEUTRA && personagens->amizades[i][j] != SEM_AMIZADE) {
 				if (personagens->caracteristica[i][IND_SAUDE] != MORTO && personagens->caracteristica[j][IND_SAUDE] != MORTO) {
 					mudanca[i].muda_fac = fac2;
 					personagens->amizades[i][j] -= REDUZ_GUERRA_POVO;
@@ -540,7 +567,7 @@ bool Toma_Territorio::pre_condicoes (Relacao *personagens, Dados_Evento ***event
 		return false;
 		
 	///Verifica se os envolvidos são inimigos
-	if (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA)
+	if (personagens->amizades[p1][p2] >= AMIZADE_NEUTRA || personagens->amizades[p1][p2] == SEM_AMIZADE)
 		return false;
 		
 	///Verifica se alguma facção vai de fato perder a guerra
@@ -565,12 +592,13 @@ float Toma_Territorio::pobabilidade_ocorre (Relacao *personagens, Dados_Evento *
 	///Caso algum dos líderes esteja morto, a tomada de território deve ocorrer imediatamente
 	if (personagens->caracteristica[p1][IND_SAUDE] == MORTO || personagens->caracteristica[p2][IND_SAUDE] == MORTO)
 		return 1.1;
-		
-	return PROB_TOMA_TERRITORIO;
+	uniform_real_distribution<> rand1(0, PROB_TOMA_TERRITORIO);
+	return rand1(gen2);
 }
 //----------------------------------------------------------------------
 void Toma_Territorio::executa_evento (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
 	altera_dados_evento(evento_ocorrido, p1, p2, TOMA_TERRITORIO);
+	altera_dados_evento(evento_ocorrido, p2, p1, TOMA_TERRITORIO);
 	int fac1 = personagens->caracteristica[p1][IND_FACCAO];
 	int fac2 = personagens->caracteristica[p2][IND_FACCAO];
 	int vencedor, perdedor;
@@ -623,8 +651,11 @@ void Toma_Territorio::consequencias (Relacao *personagens, Dados_Evento ***event
 //**********************************************************************
 ///p1 escolhe um novo lider pra facção de p2
 bool Novo_Lider::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
+	int fac1 = personagens->caracteristica[p1][IND_FACCAO];
+	int fac2 = personagens->caracteristica[p2][IND_FACCAO];
+	
 	///Verifica se p1 já tomou o território de p2
-	if (evento_ocorrido[p1][p2][TOMA_TERRITORIO].ocorrencias == 0)
+	if (evento_ocorrido[p1][p2][TOMA_TERRITORIO].ocorrencias == 0 && evento_ocorrido[p1][p2][TOMA_TERRITORIO].participante[2] == fac1)
 		return false;
 		
 	///Verifica se o lider vencedor está vivo
@@ -664,7 +695,7 @@ void Novo_Lider::executa_evento (Relacao *personagens, Dados_Evento ***evento_oc
 	int escolhido = -1;
 	float max = -2;
 	for (int i = personagens->faccoes[fac1].ini; i < personagens->faccoes[fac1].fim; i++) {
-		if (personagens->funcao_personagem[i] == NOBRE && personagens->amizades[p1][i] > max)
+		if (personagens->funcao_personagem[i] == GUERREIRO && personagens->amizades[p1][i] > max)
 			escolhido = i;
 	}
 	
@@ -807,7 +838,8 @@ bool Disputa_Territorio::pre_condicoes (Relacao *personagens, Dados_Evento ***ev
 }
 //----------------------------------------------------------------------
 float Disputa_Territorio::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
-	return PROB_DISPUTA_TERRITORIO;
+	uniform_real_distribution<> rand1(0, PROB_DISPUTA_TERRITORIO);
+	return rand1(gen2);
 }
 //----------------------------------------------------------------------
 void Disputa_Territorio::executa_evento (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
@@ -844,8 +876,8 @@ bool Assassina::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocor
 	if (personagens->funcao_personagem[p1] != ASSASSINO)
 		return false;
 		
-	///Verifica se p2 já está morto
-	if (personagens->caracteristica[p2][IND_SAUDE] == MORTO)
+	///Verifica se p1 ou p2 já está morto
+	if (personagens->caracteristica[p1][IND_SAUDE] == MORTO || personagens->caracteristica[p2][IND_SAUDE] == MORTO)
 		return false;
 		
 	///Verifica se p2 é algum líder que teve conflito/guerra/etc com a facção de p1
@@ -853,7 +885,7 @@ bool Assassina::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocor
 	int fac2 = personagens->caracteristica[p2][IND_FACCAO];
 	int lider1 = personagens->faccoes[fac1].lider;
 	///Verifica também se p1 é amigo do líder de seu clan
-	if (personagens->faccoes[fac2].lider == p2 && personagens->amizades[p1][lider1] > AMIZADE_NEUTRA) {
+	if (personagens->faccoes[fac2].lider == p2 && personagens->amizades[p1][lider1] > AMIZADE_NEUTRA && personagens->amizades[p1][lider1] != SEM_AMIZADE) {
 		if (evento_ocorrido[lider1][p2][TOMA_TERRITORIO].ocorrencias > 0) {
 			this->extra[0] = ASSASSINA_TOMA_TERRITORIO;
 			return true;
@@ -876,28 +908,26 @@ bool Assassina::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocor
 		this->extra[0] = ASSASSINA_NOVO_LIDER;
 		return true;
 	}
-		
-	///Verifica se p1 é inimigo de p2
-	if (personagens->amizades[p1][p2] < MIN_AMI_ASSASSINA) {
-		if (ultimo_assassinato_inimigos == -1 || ultimo_assassinato_inimigos + DELTA_ASSASSINATO <= timeline) {
-			this->extra[0] = ASSASSINA_INIMIGOS;
-			return true;
-		}
+	
+	///Verifica se p2 assassinou algum amigo de p1
+	if (evento_ocorrido[p1][p2][DESCOBRE_ASSASSINO].ocorrencias > 0) {
+		this->extra[0] = ASSASSINA_VINGANCA;
+		this->extra[1] = p1;
+		this->extra[2] = evento_ocorrido[p1][p2][DESCOBRE_ASSASSINO].participante[2];	///Amigo de p1 que foi assassinado
+		return true;
 	}
 	
-	///Verifica se p2 assassinou algum amigo de alguem e esse alguem contraou p1 para vingá-lo
+	
 	for (int i = 0; i < personagens->num_vert; i++) {
-		///Se i descobriu que p2 assassinou seu amigo
-		if (evento_ocorrido[i][p2][DESCOBRE_ASSASSINO].ocorrencias > 0) {
+		///Verifica se p2 assassinou algum amigo de alguem e esse alguem contraou p1 para vingá-lo
+		///Se i descobriu que p2 assassinou seu amigo e i e amigo do assassino p1
+		if (evento_ocorrido[i][p2][DESCOBRE_ASSASSINO].ocorrencias > 0 && personagens->amizades[i][p1] != SEM_AMIZADE) {
 			this->extra[0] = ASSASSINA_VINGANCA;
 			this->extra[1] = i;
 			this->extra[2] = evento_ocorrido[i][p2][DESCOBRE_ASSASSINO].participante[2];	///Amigo de i que foi assassinado
 			return true;
 		}
-	}
-	
-	///Verifica se p2 matou algum amigo de p1 em um duelo
-	for (int i = 0; i < personagens->num_vert; i++) {
+		///Verifica se p2 matou algum amigo de p1 em um duelo
 		if (personagens->amizades[p1][i] > AMIZADE_NEUTRA) {
 			if (evento_ocorrido[i][p2][DUELO].ocorrencias > 0 && evento_ocorrido[i][p2][DUELO].participante[5] == i) {
 				this->extra[0] = ASSASSINA_DUELO;
@@ -912,34 +942,59 @@ bool Assassina::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocor
 		}
 	}
 	
+	///Verifica se p1 é inimigo de p2
+	if (personagens->amizades[p1][p2] < MIN_AMI_ASSASSINA && personagens->amizades[p1][p2] != SEM_AMIZADE) {
+		if (ultimo_assassinato_inimigos == -1 || ultimo_assassinato_inimigos + DELTA_ASSASSINATO <= timeline) {
+			this->extra[0] = ASSASSINA_INIMIGOS;
+			return true;
+		}
+	}
+	
 	return false;
 }
 //----------------------------------------------------------------------
 float Assassina::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
 	switch (this->extra[0]) {
-		case ASSASSINA_CONFLITO_FAC:
-			return 0.05;
+		case ASSASSINA_CONFLITO_FAC:{
+				uniform_real_distribution<> rand1(0, 0.3);
+				return rand1(gen2);
+			}
 			break;
-		case ASSASSINA_DECLARA_GUERRA:
-			return 0.07;
+		case ASSASSINA_DECLARA_GUERRA:{
+				uniform_real_distribution<> rand2(0, 0.3);
+				return rand2(gen2);
+			}
 			break;
-		case ASSASSINA_GUERRA:
-			return 0.1;
+		case ASSASSINA_GUERRA:{
+				uniform_real_distribution<> rand3(0, 0.5);
+				return rand3(gen2);
+			}
 			break;
-		case ASSASSINA_TOMA_TERRITORIO:
-			return 0.13;
+		case ASSASSINA_TOMA_TERRITORIO:{
+				uniform_real_distribution<> rand4(0, 0.5);
+				return rand4(gen2);
+			}
 			break;
-		case ASSASSINA_NOVO_LIDER:
-			return 0.15;
+		case ASSASSINA_NOVO_LIDER:{
+				uniform_real_distribution<> rand5(0, 0.5);
+				return rand5(gen2);
+			}
 			break;
-		case ASSASSINA_INIMIGOS:
-			return 0.2*personagens->amizades[p1][p2];
+		case ASSASSINA_INIMIGOS:{
+				uniform_real_distribution<> rand6(0, 0.05);
+				return rand6(gen2)*(-personagens->amizades[p1][p2]);
+			}
 			break;
-		case ASSASSINA_VINGANCA:
-			return 0.6;
+		case ASSASSINA_VINGANCA:{
+				uniform_real_distribution<> rand7(0.0, 0.5);
+				float p = rand7(gen2);
+				return p;
+			}
 			break;
-		case ASSASSINA_DUELO:
-			return 0.6;
+		case ASSASSINA_DUELO:{
+				uniform_real_distribution<> rand8(0.0, 0.5);
+				return rand8(gen2);
+			}
 			break;
 	}
 	
@@ -1001,12 +1056,16 @@ void Assassina::executa_evento (Relacao *personagens, Dados_Evento ***evento_oco
 				//printf("%s de %s contrata um assassino e elimina %s de %s, responsável pela morte de seu falecido amigo, %s de %s.\n", ne1, ne1_f, np2, n2, ne2, ne2_f);
 				printf("%s from the %s faction hires an assassin and elimnates %s from the %s faction, responsible for the death of his friend, %s from the %s faction.\n", ne1, ne1_f, np2, n2, ne2, ne2_f);
 			}
+			eventos_pessoais++;
+			assassinatos++;
 			break;
 		case ASSASSINA_DUELO:
 			ne1 = personagens->nome[this->extra[1]];
 			ne1_f = personagens->faccoes[(int)personagens->caracteristica[this->extra[1]][IND_FACCAO]].nome;
 			//printf("%s de %s assassina %s de %s para vingar da morte de seu amigo %s de %s, morto em um duelo contra %s de %s.\n", np1, n1, np2, n2, ne1, ne1_f, np2, n2);
 			printf("%s from the %s faction murders %s from the %s faction to avenge the death of his friend %s from the %s faction, dead in a duel against %s from the %s faction.\n", np1, n1, np2, n2, ne1, ne1_f, np2, n2);
+			eventos_pessoais++;
+			assassinatos++;
 			break;
 	}
 }
@@ -1020,8 +1079,16 @@ void Assassina::consequencias (Relacao *personagens, Dados_Evento ***evento_ocor
 //**********************************************************************
 ///p1 descobre que p2 matou algum de seus amigos
 bool Descobre_Assassino::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
+	///Verifica se p1 está morto
+	if (personagens->caracteristica[p1][IND_SAUDE] == MORTO)
+		return false;
+	
 	///Verifica se houve algum evento Descobre_Assassino recentemente
 	if (ultimo_descobre_assassino >= 0 && ultimo_descobre_assassino + DELTA_DESCOBRE_ASSASSINO > timeline)
+		return false;
+		
+	///Verifica se esse evento ja ocorreu antes
+	if (evento_ocorrido[p1][p2][DESCOBRE_ASSASSINO].ocorrencias > 0)
 		return false;
 	
 	///Verifica se p2 matou algum amigo de p1
@@ -1040,10 +1107,17 @@ bool Descobre_Assassino::pre_condicoes (Relacao *personagens, Dados_Evento ***ev
 }
 //----------------------------------------------------------------------
 float Descobre_Assassino::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
-	return PROB_DESCOBRE_ASSASSINO*personagens->amizades[p1][this->extra[0]];
+	float mult = 0.1;
+	if (personagens->funcao_personagem[p1] == GUERREIRO || personagens->funcao_personagem[p1] == ASSASSINO) {
+		mult = 2.5;
+	}
+	uniform_real_distribution<> rand1(0, PROB_DESCOBRE_ASSASSINO);
+	return rand1(gen2)*personagens->amizades[p1][this->extra[0]]*mult;
 }
 //----------------------------------------------------------------------
 void Descobre_Assassino::executa_evento (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
+	//eventos_pessoais++;
+	descobre++;
 	altera_dados_evento(evento_ocorrido, p1, p2, DESCOBRE_ASSASSINO);
 	evento_ocorrido[p1][p2][DESCOBRE_ASSASSINO].participante[2] = this->extra[0];
 	
@@ -1138,6 +1212,16 @@ bool Duelo::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_ocorrido
 			}
 		}
 	}
+	if (evento_ocorrido[lider2][lider1][GUERRA].ocorrencias > 0 && personagens->funcao_personagem[p1] == GUERREIRO) {
+		for (int i = 2; i < MAX_PARTICIPANTES; i++) {
+			a = evento_ocorrido[lider2][lider1][GUERRA].participante[i];
+			if (personagens->amizades[p1][a] > AMIZADE_NEUTRA && evento_ocorrido[p2][a][MORTE_BATALHA].ocorrencias > 0) {
+				this->extra[0] = DUELA_MORTE_BATALHA;
+				this->extra[1] = a;
+				return true;
+			}
+		}
+	}
 	
 	return false;
 }
@@ -1150,6 +1234,8 @@ float Duelo::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_o
 			amigo = this->extra[1];
 			a = personagens->amizades[p1][amigo];
 			p = a*personagens->caracteristica[p1][IND_FORCA];
+			if (p < 0)
+				p = -p;
 			break;
 		case DUELA_DECLARA_GUERRA:
 			p = personagens->caracteristica[p1][IND_FORCA] * personagens->caracteristica[p2][IND_FORCA];
@@ -1158,6 +1244,8 @@ float Duelo::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_o
 			amigo = this->extra[1];
 			a = personagens->amizades[p1][amigo];
 			p = a*personagens->caracteristica[p1][IND_FORCA];
+			if (p < 0)
+				p = -p;
 			break;
 	}
 	
@@ -1193,6 +1281,8 @@ void Duelo::executa_evento (Relacao *personagens, Dados_Evento ***evento_ocorrid
 			nef = personagens->faccoes[(int)personagens->caracteristica[this->extra[1]][IND_FACCAO]].nome;
 			//printf("Após descobrir que %s de %s assassinou seu amigo %s de %s, %s de %s desafia o assassino para um duelo.\n", np2, n2, ne, nef, np1, n1);
 			printf("After discovering that %s from the %s faction killed his friend %s from the %s faction, %s from the %s faction challenges the assassin to a duel.\n", np2, n2, ne, nef, np1, n1);
+			eventos_pessoais++;
+			duelos++;
 			break;
 		case DUELA_DECLARA_GUERRA:
 			//printf("Para popupar a vida de seu exército, %s de %s decide desafiar o líder de sua facção rival, %s de %s, para um duelo.\n", np1, n1, np2, n2);
@@ -1203,6 +1293,8 @@ void Duelo::executa_evento (Relacao *personagens, Dados_Evento ***evento_ocorrid
 			nef = personagens->faccoes[(int)personagens->caracteristica[this->extra[1]][IND_FACCAO]].nome;
 			//printf("%s de %s, enfurecido pela perda de seu amigo %s de %s em batalha, desafia o responsável por sua morte, %s de %s, para um duelo.\n", np1, n1, ne, nef, np2, n2);
 			printf("%s from the %s faction, infuriated by the loss of his friend %s from the %s faction during a battle, challenges the responsible for his death, %s from the %s faction, to a duel.\n", np1, n1, ne, nef, np2, n2);
+			eventos_pessoais++;
+			duelos++;
 			break;
 	}
 	char* nv = personagens->nome[vencedor];
@@ -1251,7 +1343,8 @@ bool Repressao_Pop::pre_condicoes (Relacao *personagens, Dados_Evento ***evento_
 }
 //----------------------------------------------------------------------
 float Repressao_Pop::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
-	return (1.0-personagens->caracteristica[p1][IND_BONDADE])*PROB_REPRESSAO_POP;
+	uniform_real_distribution<> rand1(0, PROB_REPRESSAO_POP);
+	return (1.0-personagens->caracteristica[p1][IND_BONDADE])*rand1(gen2);
 }
 //----------------------------------------------------------------------
 void Repressao_Pop::executa_evento (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
@@ -1338,7 +1431,7 @@ bool Conflito_Civil::pre_condicoes (Relacao *personagens, Dados_Evento ***evento
 	for (int f = 0; f < personagens->num_faccoes; f++) {
 		if (f != fac2) {
 			l = personagens->faccoes[f].lider;
-			if (personagens->amizades[l][p2] < AMIZADE_NEUTRA)
+			if (personagens->amizades[l][p2] != SEM_AMIZADE && personagens->amizades[l][p2] < AMIZADE_NEUTRA)
 				this->extra[1]++;
 		}
 	}	
@@ -1351,14 +1444,20 @@ bool Conflito_Civil::pre_condicoes (Relacao *personagens, Dados_Evento ***evento
 float Conflito_Civil::pobabilidade_ocorre (Relacao *personagens, Dados_Evento ***evento_ocorrido, int p1, int p2) {
 	float p;
 	switch (this->extra[0]) {
-		case CONFLITO_INIMIGOS:
-			p = ((float)this->extra[1]/(float)personagens->num_faccoes) * PROB_CONFLITO_CIVIL;
+		case CONFLITO_INIMIGOS:{
+				uniform_real_distribution<> rand1(0, PROB_CONFLITO_CIVIL);
+				p = ((float)this->extra[1]/(float)personagens->num_faccoes) * rand1(gen2);
+			}
 			break;
-		case CONFLITO_REPRESSAO:
-			p = PROB_CONFLITO_CIVIL;
+		case CONFLITO_REPRESSAO:{
+				uniform_real_distribution<> rand2(0, PROB_CONFLITO_CIVIL);
+				p = rand2(gen2);
+			}
 			break;
-		case CONFLITO_TOMA:
-			p = PROB_CONFLITO_CIVIL;
+		case CONFLITO_TOMA:{
+				uniform_real_distribution<> rand3(0, PROB_CONFLITO_CIVIL);
+				p = rand3(gen2);
+			}
 			break;
 	}
 	return p;

@@ -4,12 +4,17 @@
 #include "Relacao.hpp"
 #include "Eventos.hpp"
 
-#define TAM_HISTORIA 35		///Maximum number of events per story
+#define TAM_HISTORIA 20
 #define NUM_NOME_MASC 2943
 #define NUM_NOME_FEM 5001
 #define NUM_SOBRENOME 100
 
-///Variables containing the possible names
+extern int eventos_pessoais;
+extern int descobre;
+extern int assassinatos;
+extern int duelos;
+
+///Variáveis os nomes dos personagens
 char** nome_masc;
 char** nome_fem;
 char** sobrenome;
@@ -17,17 +22,18 @@ char** sobrenome;
 void le_arq_nomes ();
 
 int main (int argc, char** argv) {
-	int vertices = 120;		///Number of characters in the story
-	int faccoes = 3;		///number of factions. There must be at least 2 factions
-	float margem = 0.5;
-	float pct = 0.15;		///Multiplier associated to the number of connections between factions that is created
-	int k_L = 2;			///Number of connections of each vertex in the Lattice structure
-	int k_SF = 4;			///Number of new connections that should be made for each vertex
+	int vertices = 120;
+	int aresta_aleatoria = 6*vertices;
+	int faccoes = 4;		///Deve existir no mínimo 2 facções
+	float margem = 0.2;
+	float pct = 0.05;
+	int k_L = 1;
+	int k_SF = 4;
 	float prob_SW = 0.15;
-	float alpha = 0.9;		///Alpha parameter
+	float alpha = 0.98;
 	
 	if (vertices >= NUM_NOME_MASC || vertices >= NUM_NOME_FEM || faccoes >= NUM_SOBRENOME) {
-		printf("Too many vertexes or too many factions!\n");
+		printf("Muitos vértices ou muitas facções!\n");
 		exit(0);
 	}
 	
@@ -35,18 +41,32 @@ int main (int argc, char** argv) {
 	Relacao *relacoes = new Relacao(vertices, faccoes, margem, pct, k_L, k_SF, prob_SW, alpha);
 	Rede_Eventos *rede_evento = new Rede_Eventos(relacoes);
 	relacoes->cria_rede();
+	//relacoes->cria_rede_aleatoria(aresta_aleatoria);
+	printf("---Arestas = %d\n", relacoes->num_aresta);
 	relacoes->converte_CSV();
 	relacoes->define_relacoes();
 	relacoes->define_funcao_personagens();
 	relacoes->define_nomes(nome_masc, nome_fem, sobrenome, NUM_NOME_MASC, NUM_NOME_FEM, NUM_SOBRENOME);
 	rede_evento->eventos_iniciais();
 	
-	for (int i = 0; i < TAM_HISTORIA; i++) {
+	int i;
+	for (i = 0; i < TAM_HISTORIA; i++) {
 		if (!rede_evento->prox_eventos->vazia()) {
 			//rede_evento->prox_eventos->imprime();
 			rede_evento->escolhe_evento();
 		}
+		else
+			break;
 	}
+	
+	//FILE *arq = fopen("Random.dat", "a");
+	FILE *arq = fopen("Scale_Free.dat", "a");
+	fprintf(arq, "%d\n", eventos_pessoais);
+	
+	
+	
+	printf("\n\nEVENTOS PESSOAIS = %d\n", eventos_pessoais);
+	printf("\tDESCOBRE:\t%d\n\tASSASSINATOS:\t%d\n\tDUELOS:\t\t%d\n\n\n", descobre, assassinatos, duelos);
 	
 	return 0;
 }

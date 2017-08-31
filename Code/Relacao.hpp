@@ -36,11 +36,11 @@
 #define FEMININO 	0
 #define MASCULINO 	1
 
-#define POUCOS_AMIGOS 5
+#define POUCOS_AMIGOS 3
 #define MAX_NOBREZA 0.7
 #define MIN_NOBREZA 0.4
-#define MAX_GUERREIRO 15
-#define MAX_ASSASSINO 5
+#define MAX_GUERREIRO 0.1
+#define MAX_ASSASSINO 0.1
 
 #define TAM_NOME 		30
 #define NAO_DOMINADA	-1
@@ -83,6 +83,7 @@ class Relacao {
 		int busca_vert_pesos (float p, int fac);
 		int seleciona_faccao_aleatoria (float *peso, float p);
 		void cria_rede();
+		void cria_rede_aleatoria (int n_aresta);
 		void conecta_faccoes();
 		void cria_lattice();
 		void separa_faccoes();
@@ -99,8 +100,8 @@ class Relacao {
 		void seleciona_lider (int fac, ListaDE *lista);
 		void seleciona_rebelde(int fac, ListaDE *lista);
 		void seleciona_nobreza (int fac, int tam_fac, ListaDE *lista);
-		void seleciona_guerreiro (int fac);
-		void seleciona_assassino (int fac);
+		void seleciona_guerreiro (int fac, int tam_fac, ListaDE *lista);
+		void seleciona_assassino (int fac, int tam_fac, ListaDE *lista);
 		void define_nomes (char** nome_masc, char** nome_fem, char** sobrenome, int nm, int nf, int sr);
 };
 

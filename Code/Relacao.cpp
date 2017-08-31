@@ -26,7 +26,7 @@ Relacao::Relacao (int v, int fac, float margem, float pct, int k, int m, float p
 	this->prob_SW = p;
 	this->alpha = a;
 	this->desvio_p = 0.3;
-	this->bondade_base = 0.5;
+	this->bondade_base = 0.4;
 	
 	///Aloca estruturas
 	peso = (float*) malloc (sizeof(float)*v);
@@ -73,11 +73,31 @@ Relacao::~Relacao() {
 	free(funcao_personagem);
 }
 //**********************************************************************
+void Relacao::cria_rede_aleatoria (int n_aresta) {
+	printf("Criando rede aleatoria...\n");
+	uniform_int_distribution<> uniVert(0,num_vert-1);
+	int a, b;
+	
+	for (int i = 0; i < n_aresta; i++) {
+		a = uniVert(gen);
+		b = uniVert(gen);
+		while (a == b)
+			b = uniVert(gen);
+		if (amizades[a][b] == SEM_AMIZADE)
+			num_aresta += 1;
+		amizades[a][b] = INIT_AMIZADE;
+	}
+	printf("....rede aleatoria criada!\n");
+}
+//**********************************************************************
 void Relacao::cria_rede () {
 	this->cria_lattice();
+	printf("Lattice criado....\n");
 	//Relacao->trans_small_world();
 	this->scale_free();
+	printf("Rede livre de escala criada....\n");
 	this->conecta_faccoes();
+	printf("Facções conectadas...\n");
 }
 //**********************************************************************
 void Relacao::converte_CSV () {
@@ -247,23 +267,42 @@ int Relacao::busca_vert_pesos (float p, int fac) {
 }
 //**********************************************************************
 void Relacao::scale_free () {
-	int v1, v2;
+	int v1, v2, t;
 	int nv;
 	
 	for (int f = 0; f < num_faccoes; f++) {
+		uniform_int_distribution<> uniFac(faccoes[f].ini, faccoes[f].fim);
 		nv = faccoes[f].tam;
+		if (nv < k_SF)
+			printf("VAI DAR ERRO!!!\n");
 		for (int i = 0; i < nv*k_SF; i++) {
+			t = 0;
 			v1 = this->busca_vert_pesos(uni(gen), f);	
 			v2 = this->busca_vert_pesos(uni(gen), f);	
 			//printf("(%d, %d)\n", v1, v2);
-			if (amizades[v1][v2] == SEM_AMIZADE && v1 != v2) {
-				amizades[v1][v2] = INIT_AMIZADE;
+			while (amizades[v1][v2] != SEM_AMIZADE || v1 == v2) {
+				if (t > 10) {
+					v1 = uniFac(gen);
+					v2 = uniFac(gen);
+				}
+				else {
+					v1 = this->busca_vert_pesos(uni(gen), f);	
+					v2 = this->busca_vert_pesos(uni(gen), f);	
+					t++;
+				}
+			}
+			amizades[v1][v2] = INIT_AMIZADE;
+			num_aresta++;
+		}
+		/*for (int i = faccoes[f].ini; i <= faccoes[f].fim; i++) {
+			for (int j = 0; j < k_SF; j++) {
+				v1 = this->busca_vert_pesos(uni(gen), f);
+				while (v1 == i || amizades[i][v1] != SEM_AMIZADE)
+					v1 = this->busca_vert_pesos(uni(gen), f);
+				amizades[i][v1] = INIT_AMIZADE;
 				num_aresta++;
 			}
-			else {
-				i--;
-			}
-		}
+		}*/
 	}
 }
 //**********************************************************************
@@ -395,9 +434,9 @@ void Relacao::define_funcao_personagens () {
 		lista = nos_mais_influentes(f);
 		seleciona_lider(f, lista);
 		seleciona_rebelde(f, lista);
-		seleciona_nobreza(f, n, lista);
-		seleciona_guerreiro(f);
-		seleciona_assassino(f);
+		//seleciona_nobreza(f, n, lista);
+		seleciona_guerreiro(f, n, lista);
+		seleciona_assassino(f, n, lista);
 		delete lista;
 	}
 }
@@ -446,40 +485,40 @@ void Relacao::seleciona_nobreza (int fac, int tam_fac, ListaDE *lista) {
 	delete l_aux;
 }
 //**********************************************************************
-void Relacao::seleciona_guerreiro (int fac) {
-	int max_tentativas = 20*num_vert;
-	uniform_int_distribution<> uniGue(0, MAX_GUERREIRO);
-	uniform_real_distribution<> uniFor(0.4, 1.0);
-	int n_gue = uniGue(gen);
-	int n = 0, e;
+void Relacao::seleciona_guerreiro (int fac, int tam_fac, ListaDE *lista) {
+	uniform_real_distribution<> uniGue(0, MAX_GUERREIRO);
+	uniform_real_distribution<> uniFor(0.7, 1.0);
+	int n_gue = uniGue(gen) * tam_fac;
+	if (n_gue == 0)
+		n_gue = 1;
+	int n = 0;
+	Item *e;
 	
-	uniform_int_distribution<> uniFac(faccoes[fac].ini, faccoes[fac].fim);
-	
-	for (int i = 0; i < max_tentativas && n < n_gue; i++) {
-		e = uniFac(gen);
-		if (funcao_personagem[e] == POVO || funcao_personagem[e] == NOBRE) {
-			funcao_personagem[e] = GUERREIRO;
-			caracteristica[e][IND_FORCA] = uniFor(gen);
-			n++;
-		}
+	for (int i = 0; i < n_gue && !lista->vazia(); i++) {
+		e = lista->remove_topo();
+		printf("\tCONEXOES: %f\n", e->f);
+		funcao_personagem[e->id] = GUERREIRO;
+		caracteristica[e->id][IND_FORCA] = uniFor(gen);
+		n++;
 	}
+	printf("Guerreiros = %d\n", n);
 }
 //**********************************************************************
-void Relacao::seleciona_assassino (int fac) {
-	int max_tentativas = 20*num_vert;
-	uniform_int_distribution<> uniAs(0, MAX_ASSASSINO);
-	int n_as = uniAs(gen);
-	int n = 0, e;
+void Relacao::seleciona_assassino (int fac, int tam_fac, ListaDE *lista) {
+	uniform_real_distribution<> uniAs(0, MAX_ASSASSINO);
+	int n_as = uniAs(gen) * tam_fac;
+	if (n_as == 0)
+		n_as = 1;
+	int n = 0;
+	Item *e;
 	
-	uniform_int_distribution<> uniFac(faccoes[fac].ini, faccoes[fac].fim);
-	
-	for (int i = 0; i < max_tentativas && n < n_as; i++) {
-		e = uniFac(gen);
-		if (funcao_personagem[e] == POVO || funcao_personagem[e] == NOBRE) {
-			funcao_personagem[e] = ASSASSINO;
-			n++;
-		}
+	for (int i = 0; i < n_as && !lista->vazia(); i++) {
+		e = lista->remove_topo();
+		printf("\tCONEXOES: %f\n", e->f);
+		funcao_personagem[e->id] = ASSASSINO;
+		n++;
 	}
+	printf("Assassinos = %d\n", n);
 }
 //**********************************************************************
 ListaDE* Relacao::nos_mais_influentes (int fac) {
@@ -493,8 +532,9 @@ ListaDE* Relacao::nos_mais_influentes (int fac) {
 			if (amizades[i][j] != SEM_AMIZADE)
 				n++;
 		}
-		if (n > POUCOS_AMIGOS)
+		if (n > POUCOS_AMIGOS) {
 			lista->insere_ordenado(i, n);
+		}
 	}
 	
 	return lista;
